@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "flipperforge"
 version = "0.1.0"
 description = "BadUSB payload workshop for Flipper Zero"
+readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 authors = [{name = "TiltedLunar123", email = "hilgendorfjude@gmail.com"}]
