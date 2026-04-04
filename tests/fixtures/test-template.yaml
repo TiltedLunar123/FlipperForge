@@ -1,0 +1,36 @@
+name: test-payload
+description: A test payload for unit tests
+author: test
+version: "1.0"
+mitre:
+  tactic: discovery
+  technique: T1082
+platform: windows
+parameters:
+  - name: msg
+    type: string
+    default: "hello"
+    description: "Message to type"
+  - name: delay_ms
+    type: integer
+    default: 500
+    description: "Delay in ms"
+  - name: verbose
+    type: boolean
+    default: false
+    description: "Verbose mode"
+  - name: shell
+    type: choice
+    default: "cmd"
+    choices: ["cmd", "powershell", "terminal"]
+    description: "Shell to open"
+safety:
+  requires_confirmation: false
+  scope_note: "Test only"
+script: |
+  REM Test payload
+  DELAY {{ delay_ms }}
+  GUI r
+  DELAY 300
+  STRING {{ msg }}
+  ENTER
