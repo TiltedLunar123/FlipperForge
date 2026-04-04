@@ -75,7 +75,7 @@ CLI commands `build`, `preview`, and `deploy` share state through a local build 
 - `flipperforge deploy` reads `.flipperforge/cache/last_build.txt` and pushes it to the Flipper.
 - If no cached build exists, `preview` and `deploy` print an error: `No compiled payload found. Run 'flipperforge build <template>' first.`
 
-The cache is a simple file-based approach — no database required.
+The cache is a simple file-based approach  - no database required.
 
 ## Payload Library (library/manager.py)
 
@@ -87,7 +87,7 @@ The library manager handles saved payloads in the `payloads/` directory:
 - **Delete:** `flipperforge library rm <name>` removes a saved payload (with confirmation).
 - **Search:** `flipperforge library search <query>` searches by name, tactic, or technique ID.
 
-Storage is flat files in `payloads/` — each saved payload is a pair: `<name>.txt` + `<name>.meta.json`.
+Storage is flat files in `payloads/`  - each saved payload is a pair: `<name>.txt` + `<name>.meta.json`.
 
 ## Template Format
 
@@ -130,10 +130,10 @@ script: |
 Jinja2 templating: `{{ param_name }}` in the script body gets replaced with user-supplied or default values at compile time. The compiler validates types before substitution.
 
 **Supported parameter types:**
-- `string` — Free text. Validated: max 500 chars, no null bytes. Shell metacharacters are allowed (payloads are intentionally shell commands) but the linter warns on common injection patterns within parameter values themselves.
-- `integer` — Whole number. Validated: must parse as int, optional `min`/`max` constraints in template.
-- `boolean` — `true`/`false`. Rendered as the literal string `true` or `false` in the script.
-- `choice` — One of a predefined set of values. Template declares `choices: [opt1, opt2, opt3]`.
+- `string`  - Free text. Validated: max 500 chars, no null bytes. Shell metacharacters are allowed (payloads are intentionally shell commands) but the linter warns on common injection patterns within parameter values themselves.
+- `integer`  - Whole number. Validated: must parse as int, optional `min`/`max` constraints in template.
+- `boolean`  - `true`/`false`. Rendered as the literal string `true` or `false` in the script.
+- `choice`  - One of a predefined set of values. Template declares `choices: [opt1, opt2, opt3]`.
 
 ### Template Discovery
 
@@ -202,10 +202,10 @@ All warnings include line numbers and suggested fixes. Output via Rich formattin
 Uses Flipper Zero's serial CLI protocol over USB CDC (VID: `0x0483`, PID: `0x5740`). Baud rate: 115200. The Flipper exposes an interactive CLI over USB serial; commands are sent as ASCII text terminated by `\r\n`, and responses are read until the next `>: ` prompt.
 
 **Commands used:**
-- `storage list /ext/badusb` — Returns one line per entry: `[F]` for files, `[D]` for directories, followed by name and size.
-- `storage read /ext/badusb/<file>` — Returns file contents as raw bytes until the next CLI prompt.
-- `storage write_chunk /ext/badusb/<file> <offset>` — Flipper enters binary receive mode. Send the chunk bytes followed by `\x00` to signal end. Used for writing payloads in a single chunk (payloads are small, typically under 4KB). After the write, verify with `storage stat` to confirm file size.
-- `storage remove /ext/badusb/<file>` — Deletes the file. Returns `OK` or error.
+- `storage list /ext/badusb`  - Returns one line per entry: `[F]` for files, `[D]` for directories, followed by name and size.
+- `storage read /ext/badusb/<file>`  - Returns file contents as raw bytes until the next CLI prompt.
+- `storage write_chunk /ext/badusb/<file> <offset>`  - Flipper enters binary receive mode. Send the chunk bytes followed by `\x00` to signal end. Used for writing payloads in a single chunk (payloads are small, typically under 4KB). After the write, verify with `storage stat` to confirm file size.
+- `storage remove /ext/badusb/<file>`  - Deletes the file. Returns `OK` or error.
 
 **Error detection:** If a command fails, the Flipper returns a line starting with `Storage error:` before the next prompt. The serial module parses this and raises a descriptive exception.
 
@@ -280,9 +280,9 @@ Installable via `pip install -e .` for development or `pip install .` for use. A
 ## Testing Strategy
 
 - **Framework:** pytest
-- **Unit tests:** Parser, linter, compiler, template loader — no hardware needed. These are the priority; target full coverage of the engine module.
+- **Unit tests:** Parser, linter, compiler, template loader  - no hardware needed. These are the priority; target full coverage of the engine module.
 - **Integration tests:** Serial communication using `unittest.mock.patch` on `serial.Serial` to simulate Flipper responses. Test connection, file listing, deploy, and error paths.
-- **Template tests:** Parametrized pytest test that loads every built-in template YAML and runs it through the compiler with default parameters — must produce valid DuckyScript with no parser errors.
+- **Template tests:** Parametrized pytest test that loads every built-in template YAML and runs it through the compiler with default parameters  - must produce valid DuckyScript with no parser errors.
 - **CLI tests:** Click's `CliRunner` for invoking commands and asserting output/exit codes.
 
 ## Built-in Templates (v1)
