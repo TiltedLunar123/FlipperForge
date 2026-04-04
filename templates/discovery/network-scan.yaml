@@ -1,0 +1,60 @@
+name: network-scan
+description: "Performs quick network discovery using ARP table, neighbor cache, and subnet ping sweep via PowerShell"
+author: TiltedLunar123
+version: "1.0"
+mitre:
+  tactic: Discovery
+  technique: T1046
+platform: windows
+parameters:
+  - name: output_file
+    type: string
+    default: "netscan.txt"
+    description: "Filename to write network scan results to"
+  - name: delay_ms
+    type: integer
+    default: 500
+    description: "Delay in milliseconds between keystrokes"
+safety:
+  requires_confirmation: false
+  scope_note: "Only use on systems you own or have written authorization to test"
+script: |
+  REM -----------------------------------------------
+  REM Network Service Discovery (T1046)
+  REM Enumerates local network using ARP table,
+  REM neighbor cache, and subnet ping sweep
+  REM WARNING: Authorized use only
+  REM -----------------------------------------------
+  DELAY {{ delay_ms }}
+  GUI r
+  DELAY 500
+  STRING powershell -ep bypass
+  ENTER
+  DELAY 500
+  DELAY {{ delay_ms }}
+  STRING "=== Network Scan Results ===" | Out-File -FilePath {{ output_file }}
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING "--- ARP Table ---" | Out-File -Append -FilePath {{ output_file }}
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING arp -a | Out-File -Append -FilePath {{ output_file }}
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING "--- Net Neighbor Cache ---" | Out-File -Append -FilePath {{ output_file }}
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING Get-NetNeighbor | Format-Table -AutoSize | Out-File -Append -FilePath {{ output_file }}
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING "--- Subnet Ping Sweep ---" | Out-File -Append -FilePath {{ output_file }}
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING $subnet = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object {$_.IPAddress -ne '127.0.0.1'} | Select-Object -First 1).IPAddress -replace '\.\d+$','.'; 1..254 | ForEach-Object { $ip = "$subnet$_"; if (Test-Connection -ComputerName $ip -Count 1 -Quiet -TimeoutSeconds 1) { "Host up: $ip" } } | Out-File -Append -FilePath {{ output_file }}
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING "=== Scan Complete ===" | Out-File -Append -FilePath {{ output_file }}
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING exit
+  ENTER

