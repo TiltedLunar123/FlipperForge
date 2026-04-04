@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flipperforge"
+version = "0.1.0"
+description = "BadUSB payload workshop for Flipper Zero"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [{name = "TiltedLunar123", email = "hilgendorfjude@gmail.com"}]
+keywords = ["flipper-zero", "badusb", "duckyscript", "pentesting", "mitre-attack"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Information Technology",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Security",
+]
+dependencies = [
+    "click>=8.1",
+    "rich>=13.0",
+    "pyserial>=3.5",
+    "jinja2>=3.1",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+flipperforge = "flipperforge.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pytest-cov>=4.0"]
+
+[tool.setuptools.packages.find]
+include = ["flipperforge*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
