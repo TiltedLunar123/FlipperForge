@@ -1,9 +1,5 @@
 """Tests for the payload library manager."""
 
-import json
-import tempfile
-from pathlib import Path
-
 import pytest
 
 from flipperforge.library.manager import PayloadLibrary
@@ -84,3 +80,62 @@ def test_search_by_tactic(library):
     assert len(results) == 1
     assert results[0]["name"] == "payload_a"
     assert results[0]["meta"]["tactic"] == "Credential Access"
+
+
+# -- Path traversal prevention --
+
+
+def test_save_rejects_path_traversal(library):
+    """Names with path separators should be rejected."""
+    with pytest.raises(ValueError, match="Invalid payload name"):
+        library.save("../../etc/passwd", "REM bad", {})
+
+
+def test_save_rejects_dots(library):
+    """Names with dots should be rejected."""
+    with pytest.raises(ValueError, match="Invalid payload name"):
+        library.save("foo.bar", "REM bad", {})
+
+
+def test_save_rejects_spaces(library):
+    """Names with spaces should be rejected."""
+    with pytest.raises(ValueError, match="Invalid payload name"):
+        library.save("foo bar", "REM bad", {})
+
+
+def test_save_rejects_empty(library):
+    """Empty names should be rejected."""
+    with pytest.raises(ValueError, match="Invalid payload name"):
+        library.save("", "REM bad", {})
+
+
+def test_save_accepts_valid_names(library):
+    """Valid names with letters, digits, hyphens, underscores should work."""
+    library.save("my-payload_v2", "REM ok", {})
+    result = library.load("my-payload_v2")
+    assert result is not None
+
+
+# -- Corrupted JSON handling --
+
+
+def test_load_corrupted_json(library, tmp_path):
+    """Loading a payload with corrupted meta JSON should return empty meta."""
+    (tmp_path / "corrupt.txt").write_text("STRING hello", encoding="utf-8")
+    (tmp_path / "corrupt.meta.json").write_text("NOT JSON{{{", encoding="utf-8")
+
+    result = library.load("corrupt")
+    assert result is not None
+    assert result["script"] == "STRING hello"
+    assert result["meta"] == {}
+
+
+def test_list_all_corrupted_json(library, tmp_path):
+    """list_all should handle corrupted meta JSON gracefully."""
+    (tmp_path / "bad.txt").write_text("REM bad", encoding="utf-8")
+    (tmp_path / "bad.meta.json").write_text("{broken}", encoding="utf-8")
+
+    results = library.list_all()
+    assert len(results) == 1
+    assert results[0]["name"] == "bad"
+    assert results[0]["meta"] == {}

@@ -3,18 +3,16 @@ Tests for the DuckyScript parser.
 
 Covers tokenisation, validation, error reporting with line numbers,
 and typo suggestions for unknown commands.
-
-Author: TiltedLunar123 <hilgendorfjude@gmail.com>
 """
 
 from __future__ import annotations
 
 import pytest
 
-from flipperforge.engine.parser import Command, ParseError, ParseResult, parse
-
+from flipperforge.engine.parser import ParseResult, parse
 
 # -- Helpers ----------------------------------------------------------------
+
 
 def _names(result: ParseResult) -> list[str]:
     """Return just the command names for quick assertions."""
@@ -22,6 +20,7 @@ def _names(result: ParseResult) -> list[str]:
 
 
 # -- Empty / comment scripts ------------------------------------------------
+
 
 class TestEmptyAndComments:
     def test_empty_script(self):
@@ -48,6 +47,7 @@ class TestEmptyAndComments:
 
 # -- STRING -----------------------------------------------------------------
 
+
 class TestString:
     def test_basic_string(self):
         result = parse("STRING Hello, world!")
@@ -73,7 +73,34 @@ class TestString:
         assert not result.ok
 
 
+# -- STRINGLN ---------------------------------------------------------------
+
+
+class TestStringLn:
+    def test_basic_stringln(self):
+        result = parse("STRINGLN Hello, world!")
+        assert result.ok
+        cmd = result.commands[0]
+        assert cmd.name == "STRINGLN"
+        assert cmd.args == "Hello, world!"
+
+    def test_stringln_preserves_spaces(self):
+        result = parse("STRINGLN   multiple   spaces")
+        assert result.ok
+        assert result.commands[0].args == "  multiple   spaces"
+
+    def test_stringln_missing_text(self):
+        result = parse("STRINGLN")
+        assert not result.ok
+        assert "STRINGLN requires text argument" in result.errors[0].message
+
+    def test_stringln_only_spaces(self):
+        result = parse("STRINGLN ")
+        assert not result.ok
+
+
 # -- DELAY ------------------------------------------------------------------
+
 
 class TestDelay:
     def test_valid_delay(self):
@@ -102,15 +129,69 @@ class TestDelay:
         assert "non-negative" in result.errors[0].message
 
 
+# -- DEFAULTDELAY / DEFAULT_DELAY -------------------------------------------
+
+
+class TestDefaultDelay:
+    def test_defaultdelay(self):
+        result = parse("DEFAULTDELAY 100")
+        assert result.ok
+        assert result.commands[0].name == "DEFAULTDELAY"
+        assert result.commands[0].args == "100"
+
+    def test_default_delay_underscore(self):
+        result = parse("DEFAULT_DELAY 200")
+        assert result.ok
+        assert result.commands[0].name == "DEFAULT_DELAY"
+        assert result.commands[0].args == "200"
+
+    def test_defaultdelay_missing_value(self):
+        result = parse("DEFAULTDELAY")
+        assert not result.ok
+        assert "numeric" in result.errors[0].message.lower()
+
+    def test_defaultdelay_non_numeric(self):
+        result = parse("DEFAULTDELAY abc")
+        assert not result.ok
+        assert "non-negative integer" in result.errors[0].message
+
+    def test_defaultdelay_negative(self):
+        result = parse("DEFAULTDELAY -50")
+        assert not result.ok
+        assert "non-negative" in result.errors[0].message
+
+    def test_defaultdelay_zero(self):
+        result = parse("DEFAULTDELAY 0")
+        assert result.ok
+
+
 # -- Single keys ------------------------------------------------------------
 
+
 class TestSingleKeys:
-    @pytest.mark.parametrize("key", [
-        "ENTER", "TAB", "ESCAPE", "SPACE", "BACKSPACE", "DELETE",
-        "HOME", "END", "PAGEUP", "PAGEDOWN",
-        "UPARROW", "DOWNARROW", "LEFTARROW", "RIGHTARROW",
-        "UP", "DOWN", "LEFT", "RIGHT",
-    ])
+    @pytest.mark.parametrize(
+        "key",
+        [
+            "ENTER",
+            "TAB",
+            "ESCAPE",
+            "SPACE",
+            "BACKSPACE",
+            "DELETE",
+            "HOME",
+            "END",
+            "PAGEUP",
+            "PAGEDOWN",
+            "UPARROW",
+            "DOWNARROW",
+            "LEFTARROW",
+            "RIGHTARROW",
+            "UP",
+            "DOWN",
+            "LEFT",
+            "RIGHT",
+        ],
+    )
     def test_single_key(self, key: str):
         result = parse(key)
         assert result.ok
@@ -118,6 +199,7 @@ class TestSingleKeys:
 
 
 # -- Function keys ----------------------------------------------------------
+
 
 class TestFunctionKeys:
     @pytest.mark.parametrize("key", [f"F{n}" for n in range(1, 13)])
@@ -128,6 +210,7 @@ class TestFunctionKeys:
 
 
 # -- Modifier combos --------------------------------------------------------
+
 
 class TestModifierCombos:
     def test_gui_alone(self):
@@ -162,6 +245,7 @@ class TestModifierCombos:
 
 # -- REPEAT -----------------------------------------------------------------
 
+
 class TestRepeat:
     def test_valid_repeat(self):
         result = parse("REPEAT 3")
@@ -192,24 +276,33 @@ class TestRepeat:
 
 # -- Multiline scripts ------------------------------------------------------
 
+
 class TestMultiline:
     def test_simple_payload(self):
-        script = "\n".join([
-            "REM Open notepad",
-            "DELAY 500",
-            "GUI r",
-            "DELAY 200",
-            "STRING notepad",
-            "ENTER",
-            "DELAY 1000",
-            "STRING Hello from FlipperForge!",
-        ])
+        script = "\n".join(
+            [
+                "REM Open notepad",
+                "DELAY 500",
+                "GUI r",
+                "DELAY 200",
+                "STRING notepad",
+                "ENTER",
+                "DELAY 1000",
+                "STRING Hello from FlipperForge!",
+            ]
+        )
         result = parse(script)
         assert result.ok
         assert len(result.commands) == 8
         assert _names(result) == [
-            "REM", "DELAY", "GUI", "DELAY",
-            "STRING", "ENTER", "DELAY", "STRING",
+            "REM",
+            "DELAY",
+            "GUI",
+            "DELAY",
+            "STRING",
+            "ENTER",
+            "DELAY",
+            "STRING",
         ]
 
     def test_blank_lines_between_commands(self):
@@ -224,8 +317,34 @@ class TestMultiline:
         assert result.commands[0].line_number == 3
         assert result.commands[1].line_number == 5
 
+    def test_script_with_stringln_and_defaultdelay(self):
+        """Full script using new commands."""
+        script = "\n".join(
+            [
+                "REM test",
+                "DEFAULTDELAY 50",
+                "DELAY 500",
+                "GUI r",
+                "DELAY 300",
+                "STRINGLN cmd",
+                "STRINGLN echo hello",
+            ]
+        )
+        result = parse(script)
+        assert result.ok
+        assert _names(result) == [
+            "REM",
+            "DEFAULTDELAY",
+            "DELAY",
+            "GUI",
+            "DELAY",
+            "STRINGLN",
+            "STRINGLN",
+        ]
+
 
 # -- Error cases ------------------------------------------------------------
+
 
 class TestErrors:
     def test_unknown_command(self):
@@ -275,6 +394,7 @@ class TestErrors:
 
 
 # -- ParseResult.ok property ------------------------------------------------
+
 
 class TestParseResultOk:
     def test_ok_when_no_errors(self):

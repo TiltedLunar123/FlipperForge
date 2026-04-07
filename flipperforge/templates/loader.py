@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
+
+logger = logging.getLogger(__name__)
 
 
 class TemplateError(Exception):
@@ -18,6 +21,7 @@ class TemplateError(Exception):
 # Dataclasses
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Parameter:
     """A single template parameter definition."""
@@ -26,9 +30,9 @@ class Parameter:
     type: str  # string | integer | boolean | choice
     default: Any
     description: str = ""
-    choices: Optional[list[str]] = None
-    min: Optional[int] = None
-    max: Optional[int] = None
+    choices: list[str] | None = None
+    min: int | None = None
+    max: int | None = None
 
 
 @dataclass
@@ -60,7 +64,7 @@ class Template:
     parameters: list[Parameter] = field(default_factory=list)
     safety: SafetyInfo = field(default_factory=SafetyInfo)
     script: str = ""
-    source_path: Optional[Path] = None
+    source_path: Path | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -68,6 +72,8 @@ class Template:
 # ---------------------------------------------------------------------------
 
 _VALID_PARAM_TYPES = {"string", "integer", "boolean", "choice"}
+
+_VALID_PLATFORMS = {"windows", "macos", "linux", "cross-platform"}
 
 _REQUIRED_TOP_KEYS = {"name", "description", "author", "version", "mitre", "platform", "script"}
 
@@ -85,9 +91,7 @@ def _parse_parameter(raw: dict[str, Any]) -> Parameter:
         )
 
     if ptype == "choice" and not raw.get("choices"):
-        raise TemplateError(
-            f"Parameter '{raw['name']}' is type 'choice' but has no 'choices' list"
-        )
+        raise TemplateError(f"Parameter '{raw['name']}' is type 'choice' but has no 'choices' list")
 
     return Parameter(
         name=raw["name"],
@@ -120,6 +124,7 @@ def _parse_safety(raw: dict[str, Any] | None) -> SafetyInfo:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def load_template(path: str | Path) -> Template:
     """Load and validate a single YAML template from *path*.
@@ -161,6 +166,13 @@ def load_template(path: str | Path) -> Template:
     if missing:
         raise TemplateError(f"Template is missing required keys: {', '.join(sorted(missing))}")
 
+    platform = data["platform"].lower()
+    if platform not in _VALID_PLATFORMS:
+        raise TemplateError(
+            f"Invalid platform '{data['platform']}'. "
+            f"Must be one of: {', '.join(sorted(_VALID_PLATFORMS))}"
+        )
+
     parameters = [_parse_parameter(p) for p in data.get("parameters", [])]
     mitre = _parse_mitre(data["mitre"])
     safety = _parse_safety(data.get("safety"))
@@ -171,7 +183,7 @@ def load_template(path: str | Path) -> Template:
         author=data["author"],
         version=str(data["version"]),
         mitre=mitre,
-        platform=data["platform"],
+        platform=platform,
         parameters=parameters,
         safety=safety,
         script=data.get("script", ""),
@@ -210,8 +222,8 @@ def discover_templates(directory: str | Path) -> list[Template]:
             fpath = Path(root) / fname
             try:
                 templates.append(load_template(fpath))
-            except TemplateError:
-                # Skip files that are not valid templates
+            except TemplateError as exc:
+                logger.warning("Skipping invalid template %s: %s", fpath, exc)
                 continue
 
     templates.sort(key=lambda t: t.name)

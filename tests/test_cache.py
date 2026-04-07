@@ -1,7 +1,5 @@
 """Tests for the FlipperForge build cache."""
 
-import os
-
 import pytest
 
 from flipperforge.cache import BuildCache
@@ -51,3 +49,18 @@ def test_clear_removes_cache(cache):
 
     cache.clear()
     assert cache.load() is None
+
+
+def test_load_corrupted_json(tmp_path):
+    """Loading with corrupted meta JSON should return empty meta."""
+    cache_dir = tmp_path / "corrupt_cache"
+    cache_dir.mkdir(parents=True)
+    (cache_dir / "last_build.txt").write_text("REM test", encoding="utf-8")
+    (cache_dir / "last_build_meta.json").write_text("NOT VALID JSON", encoding="utf-8")
+
+    cache = BuildCache(cache_dir=str(cache_dir))
+    result = cache.load()
+
+    assert result is not None
+    assert result["script"] == "REM test"
+    assert result["meta"] == {}

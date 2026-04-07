@@ -3,13 +3,12 @@
 import json
 import os
 from pathlib import Path
-from typing import Optional
 
 
 class BuildCache:
     """Persistent cache that saves and loads the most recent build output."""
 
-    def __init__(self, cache_dir: Optional[str] = None) -> None:
+    def __init__(self, cache_dir: str | None = None) -> None:
         if cache_dir is None:
             cache_dir = os.path.join(os.getcwd(), ".flipperforge", "cache")
         self._cache_dir = Path(cache_dir)
@@ -28,7 +27,7 @@ class BuildCache:
         script_path.write_text(script, encoding="utf-8")
         meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
 
-    def load(self) -> Optional[dict]:
+    def load(self) -> dict | None:
         """Return a dict with 'script' and 'meta', or None when nothing is cached."""
         script_path = self._cache_dir / "last_build.txt"
         meta_path = self._cache_dir / "last_build_meta.json"
@@ -37,7 +36,10 @@ class BuildCache:
             return None
 
         script = script_path.read_text(encoding="utf-8")
-        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            meta = {}
         return {"script": script, "meta": meta}
 
     def clear(self) -> None:

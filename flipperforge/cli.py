@@ -11,12 +11,12 @@ from rich.table import Table
 
 from flipperforge import __version__
 from flipperforge.cache import BuildCache
-from flipperforge.engine.compiler import compile_template, CompileError
+from flipperforge.engine.compiler import CompileError, compile_template
 from flipperforge.engine.linter import lint
 from flipperforge.engine.parser import parse
 from flipperforge.library.manager import PayloadLibrary
 from flipperforge.mitre.mapper import MitreMapper
-from flipperforge.templates.loader import discover_templates, TemplateError
+from flipperforge.templates.loader import discover_templates
 
 console = Console()
 
@@ -31,6 +31,7 @@ def main():
 
 # -- list -------------------------------------------------------------------
 
+
 @main.command("list")
 @click.option("--tactic", default=None, help="Filter by MITRE ATT&CK tactic")
 @click.option("--technique", default=None, help="Filter by technique ID")
@@ -41,7 +42,7 @@ def list_templates(tactic, technique, templates_dir):
     templates = discover_templates(tdir)
 
     if tactic:
-        templates = [t for t in templates if t.mitre.tactic == tactic]
+        templates = [t for t in templates if t.mitre.tactic.lower() == tactic.lower()]
     if technique:
         templates = [t for t in templates if technique in (t.mitre.technique, t.mitre.subtechnique)]
 
@@ -64,6 +65,7 @@ def list_templates(tactic, technique, templates_dir):
 
 
 # -- info -------------------------------------------------------------------
+
 
 @main.command()
 @click.argument("template_name")
@@ -88,15 +90,17 @@ def info(template_name, templates_dir):
 
     console.print(f"\n[bold cyan]{t.name}[/bold cyan] v{t.version}")
     console.print(f"  {t.description}")
-    console.print(f"\n[bold]MITRE ATT&CK:[/bold]")
+    console.print("\n[bold]MITRE ATT&CK:[/bold]")
     console.print(f"  Tactic:    {t.mitre.tactic}")
     tech_name = technique_info["name"] if technique_info else "Unknown"
     console.print(f"  Technique: {technique_id} - {tech_name}")
     console.print(f"  Platform:  {t.platform}")
-    console.print(f"\n[bold]Safety:[/bold]")
-    console.print(f"  Confirmation: {'Required' if t.safety.requires_confirmation else 'Not required'}")
+    console.print("\n[bold]Safety:[/bold]")
+    console.print(
+        f"  Confirmation: {'Required' if t.safety.requires_confirmation else 'Not required'}"
+    )
     console.print(f"  Scope: {t.safety.scope_note}")
-    console.print(f"\n[bold]Parameters:[/bold]")
+    console.print("\n[bold]Parameters:[/bold]")
     for p in t.parameters:
         extra = ""
         if p.choices:
@@ -105,6 +109,7 @@ def info(template_name, templates_dir):
 
 
 # -- build ------------------------------------------------------------------
+
 
 @main.command()
 @click.argument("template_name")
@@ -134,7 +139,7 @@ def build(template_name, param, templates_dir, cache_dir):
         result = compile_template(match[0], params=params)
     except CompileError as e:
         console.print(f"[red]Compile error: {e}[/red]")
-        raise SystemExit(1)
+        raise SystemExit(1) from None
 
     if result.errors:
         console.print("[red]DuckyScript errors:[/red]")
@@ -162,6 +167,7 @@ def build(template_name, param, templates_dir, cache_dir):
 
 # -- preview ----------------------------------------------------------------
 
+
 @main.command()
 @click.option("--cache-dir", type=str, default=None, hidden=True)
 def preview(cache_dir):
@@ -170,17 +176,22 @@ def preview(cache_dir):
     cached = cache.load()
 
     if cached is None:
-        console.print("[red]No compiled payload found. Run 'flipperforge build <template>' first.[/red]")
+        console.print(
+            "[red]No compiled payload found. Run 'flipperforge build <template>' first.[/red]"
+        )
         raise SystemExit(1)
 
     meta = cached["meta"]
     console.print(f"[bold]Template:[/bold] {meta.get('template_name', 'unknown')}")
-    console.print(f"[bold]MITRE:[/bold] {meta.get('mitre_tactic', '')} / {meta.get('mitre_technique', '')}\n")
+    console.print(
+        f"[bold]MITRE:[/bold] {meta.get('mitre_tactic', '')} / {meta.get('mitre_technique', '')}\n"
+    )
     syntax = Syntax(cached["script"], "text", theme="monokai", line_numbers=True)
     console.print(syntax)
 
 
 # -- validate ---------------------------------------------------------------
+
 
 @main.command()
 @click.argument("file", type=click.Path(exists=True))
@@ -211,9 +222,12 @@ def validate(file):
 
 # -- deploy -----------------------------------------------------------------
 
+
 @main.command()
 @click.option("--port", default=None, help="Serial port (auto-detects if omitted)")
-@click.option("--name", "filename", default=None, help="Filename on Flipper (default: template name)")
+@click.option(
+    "--name", "filename", default=None, help="Filename on Flipper (default: template name)"
+)
 @click.option("--cache-dir", type=str, default=None, hidden=True)
 def deploy(port, filename, cache_dir):
     """Push the last compiled payload to Flipper Zero."""
@@ -221,7 +235,9 @@ def deploy(port, filename, cache_dir):
     cached = cache.load()
 
     if cached is None:
-        console.print("[red]No compiled payload found. Run 'flipperforge build <template>' first.[/red]")
+        console.print(
+            "[red]No compiled payload found. Run 'flipperforge build <template>' first.[/red]"
+        )
         raise SystemExit(1)
 
     if filename is None:
@@ -237,10 +253,11 @@ def deploy(port, filename, cache_dir):
             console.print(f"[green]Deployed '{filename}' to Flipper Zero.[/green]")
     except FlipperConnectionError as e:
         console.print(f"[red]Flipper error: {e}[/red]")
-        raise SystemExit(1)
+        raise SystemExit(1) from None
 
 
 # -- device subcommand group ------------------------------------------------
+
 
 @main.group()
 def device():
@@ -258,7 +275,7 @@ def device_ls(port):
             files = conn.list_badusb_files()
     except FlipperConnectionError as e:
         console.print(f"[red]Flipper error: {e}[/red]")
-        raise SystemExit(1)
+        raise SystemExit(1) from None
 
     if not files:
         console.print("[yellow]No BadUSB payloads found on Flipper.[/yellow]")
@@ -284,7 +301,7 @@ def device_pull(filename, port):
             content = conn.read_file(filename)
     except FlipperConnectionError as e:
         console.print(f"[red]Flipper error: {e}[/red]")
-        raise SystemExit(1)
+        raise SystemExit(1) from None
 
     lib = PayloadLibrary()
     name = Path(filename).stem
@@ -309,10 +326,11 @@ def device_rm(filename, port, yes):
             console.print(f"[green]Deleted '{filename}' from Flipper.[/green]")
     except FlipperConnectionError as e:
         console.print(f"[red]Flipper error: {e}[/red]")
-        raise SystemExit(1)
+        raise SystemExit(1) from None
 
 
 # -- library subcommand group -----------------------------------------------
+
 
 @main.group()
 def library():
@@ -341,7 +359,7 @@ def library_ls():
             item["name"],
             meta.get("mitre_tactic", ""),
             meta.get("mitre_technique", ""),
-            meta.get("created", "")[:10],
+            meta.get("created_at", "")[:10],
         )
     console.print(table)
 
@@ -396,6 +414,7 @@ def library_rm(name, yes):
 
 # -- save -------------------------------------------------------------------
 
+
 @main.command()
 @click.argument("name")
 @click.option("--cache-dir", type=str, default=None, hidden=True)
@@ -405,8 +424,10 @@ def save(name, cache_dir):
     cached = cache.load()
 
     if cached is None:
-        console.print("[red]No compiled payload found. Run 'flipperforge build <template>' first.[/red]")
-        raise SystemExit(1)
+        console.print(
+            "[red]No compiled payload found. Run 'flipperforge build <template>' first.[/red]"
+        )
+        raise SystemExit(1) from None
 
     lib = PayloadLibrary()
     lib.save(name, script=cached["script"], meta=cached["meta"])

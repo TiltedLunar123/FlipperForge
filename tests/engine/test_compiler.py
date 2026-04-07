@@ -29,6 +29,7 @@ def template():
 
 # -- Compile with defaults --------------------------------------------------
 
+
 class TestCompileDefaults:
     def test_compile_with_defaults(self, template):
         result = compile_template(template)
@@ -47,12 +48,16 @@ class TestCompileDefaults:
 
 # -- Compile with custom params --------------------------------------------
 
+
 class TestCompileCustomParams:
     def test_compile_with_custom_params(self, template):
-        result = compile_template(template, params={
-            "msg": "world",
-            "delay_ms": 1000,
-        })
+        result = compile_template(
+            template,
+            params={
+                "msg": "world",
+                "delay_ms": 1000,
+            },
+        )
         assert "world" in result.script
         assert "1000" in result.script
 
@@ -64,6 +69,7 @@ class TestCompileCustomParams:
 
 
 # -- Integer validation -----------------------------------------------------
+
 
 class TestValidateInteger:
     def test_invalid_integer_raises(self, template):
@@ -77,6 +83,7 @@ class TestValidateInteger:
 
 # -- Choice validation ------------------------------------------------------
 
+
 class TestValidateChoice:
     def test_invalid_choice_raises(self, template):
         with pytest.raises(CompileError, match="must be one of"):
@@ -88,6 +95,7 @@ class TestValidateChoice:
 
 
 # -- String length validation -----------------------------------------------
+
 
 class TestValidateStringLength:
     def test_string_too_long_raises(self, template):
@@ -101,7 +109,27 @@ class TestValidateStringLength:
         assert result.params_used["msg"] == max_string
 
 
+# -- Unknown parameters -----------------------------------------------------
+
+
+class TestUnknownParams:
+    def test_unknown_param_raises(self, template):
+        with pytest.raises(CompileError, match="Unknown parameter"):
+            compile_template(template, params={"nonexistent_key": "value"})
+
+    def test_extra_params_listed(self, template):
+        with pytest.raises(CompileError, match="nonexistent_key"):
+            compile_template(
+                template,
+                params={
+                    "msg": "ok",
+                    "nonexistent_key": "bad",
+                },
+            )
+
+
 # -- Warnings list ----------------------------------------------------------
+
 
 class TestResultWarnings:
     def test_result_has_warnings_list(self, template):
@@ -112,6 +140,7 @@ class TestResultWarnings:
 
 
 # -- Metadata ---------------------------------------------------------------
+
 
 class TestResultMetadata:
     def test_template_name(self, template):

@@ -1,5 +1,6 @@
-import pytest
-from flipperforge.engine.linter import lint, Warning
+"""Tests for the safety linter."""
+
+from flipperforge.engine.linter import lint
 
 
 class TestLintRules:
@@ -33,6 +34,21 @@ class TestLintRules:
         codes = [w.code for w in warnings]
         assert "DANGEROUS_COMMAND" in codes
 
+    def test_dangerous_reg_delete(self):
+        warnings = lint("DELAY 500\nSTRING reg delete HKLM\\Software /f")
+        codes = [w.code for w in warnings]
+        assert "DANGEROUS_COMMAND" in codes
+
+    def test_dangerous_bcdedit(self):
+        warnings = lint("DELAY 500\nSTRING bcdedit /set testsigning on")
+        codes = [w.code for w in warnings]
+        assert "DANGEROUS_COMMAND" in codes
+
+    def test_dangerous_remove_item(self):
+        warnings = lint("DELAY 500\nSTRING Remove-Item C:\\Temp -Recurse -Force")
+        codes = [w.code for w in warnings]
+        assert "DANGEROUS_COMMAND" in codes
+
     def test_no_rem_header(self):
         warnings = lint("DELAY 500\nGUI r")
         codes = [w.code for w in warnings]
@@ -57,3 +73,39 @@ class TestLintRules:
         script = "REM Clean payload\nDELAY 500\nGUI r\nDELAY 300\nSTRING notepad\nENTER"
         warnings = lint(script)
         assert warnings == []
+
+
+class TestNoCleanupRule:
+    def test_opens_shell_no_cleanup(self):
+        """Script opens cmd but never exits -- should warn."""
+        script = "REM test\nDELAY 500\nGUI r\nDELAY 300\nSTRING cmd\nENTER\nDELAY 500\nSTRING whoami\nENTER"
+        warnings = lint(script)
+        codes = [w.code for w in warnings]
+        assert "NO_CLEANUP" in codes
+
+    def test_opens_shell_with_exit(self):
+        """Script opens cmd and exits -- should not warn."""
+        script = (
+            "REM test\nDELAY 500\nGUI r\nDELAY 300\nSTRING cmd\nENTER\n"
+            "DELAY 500\nSTRING whoami\nENTER\nSTRING exit\nENTER"
+        )
+        warnings = lint(script)
+        codes = [w.code for w in warnings]
+        assert "NO_CLEANUP" not in codes
+
+    def test_opens_shell_with_alt_f4(self):
+        """Script opens powershell and closes with ALT F4 -- should not warn."""
+        script = (
+            "REM test\nDELAY 500\nGUI r\nDELAY 300\nSTRING powershell\nENTER\n"
+            "DELAY 500\nSTRING hostname\nENTER\nALT F4"
+        )
+        warnings = lint(script)
+        codes = [w.code for w in warnings]
+        assert "NO_CLEANUP" not in codes
+
+    def test_no_shell_no_warning(self):
+        """Script without shell commands should not trigger NO_CLEANUP."""
+        script = "REM test\nDELAY 500\nGUI r\nDELAY 300\nSTRING notepad\nENTER"
+        warnings = lint(script)
+        codes = [w.code for w in warnings]
+        assert "NO_CLEANUP" not in codes

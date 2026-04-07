@@ -4,14 +4,16 @@ BadUSB payload workshop for Flipper Zero. Build, validate, and deploy DuckyScrip
 
 > **Authorized use only.** FlipperForge is designed for legitimate security testing, red team engagements, and educational purposes. Only use on systems you own or have explicit written authorization to test.
 
+[![CI](https://github.com/TiltedLunar123/FlipperForge/actions/workflows/ci.yml/badge.svg)](https://github.com/TiltedLunar123/FlipperForge/actions/workflows/ci.yml)
+
 ## Features
 
 - **Template engine** - YAML-based payload templates with configurable parameters and Jinja2 rendering
-- **DuckyScript parser** - Validates Flipper-flavored DuckyScript with typo suggestions
-- **Safety linter** - Warns about missing delays, dangerous commands, and missing confirmation pauses
-- **MITRE ATT&CK tagging** - Every template and payload mapped to ATT&CK techniques and tactics
-- **USB deployment** - Auto-detect Flipper Zero and push payloads over serial
-- **Payload library** - Save, search, and manage your compiled payloads
+- **DuckyScript parser** - Validates Flipper-flavored DuckyScript with typo suggestions, `STRINGLN`, and `DEFAULTDELAY` support
+- **Safety linter** - Warns about missing delays, dangerous commands, missing confirmation pauses, and unclosed shells
+- **MITRE ATT&CK tagging** - Every template and payload mapped to ATT&CK techniques and tactics with descriptions and reference URLs
+- **USB deployment** - Auto-detect Flipper Zero and push payloads over serial with deploy verification
+- **Payload library** - Save, search, and manage your compiled payloads with path traversal protection
 - **Build cache** - Build once, preview and deploy without recompiling
 
 ## Installation
@@ -140,7 +142,8 @@ FlipperForge includes several safety mechanisms:
 
 - **Authorization warnings** - Every template includes scope notes and authorization reminders
 - **Confirmation pauses** - Templates flagged as dangerous require a DELAY >= 2000ms at the start for physical abort
-- **Dangerous command detection** - Linter flags format, rm -rf, del /f, diskpart, and disk wipe patterns
+- **Dangerous command detection** - Linter flags format, rm -rf, del /f, diskpart, reg delete, bcdedit, cipher /w, Remove-Item -Recurse -Force, and disk wipe patterns
+- **Unclosed shell detection** - Warns when scripts open a shell but never exit
 - **Delay validation** - Warns when delays after modifier keys are too short for reliable execution
 - **Script headers** - Encourages REM comment headers describing each payload
 
@@ -150,12 +153,21 @@ FlipperForge includes several safety mechanisms:
 # Install dev dependencies
 pip install -e ".[dev]"
 
+# Install linting tools
+pip install ruff
+
 # Run tests
 pytest
 
 # Run tests with coverage
-pytest --cov=flipperforge
+pytest --cov=flipperforge --cov-report=term-missing
+
+# Lint and format
+ruff check .
+ruff format .
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for full development guidelines.
 
 ## License
 

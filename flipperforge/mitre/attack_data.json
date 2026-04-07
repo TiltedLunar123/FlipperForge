@@ -4,55 +4,73 @@
       "id": "T1082",
       "name": "System Information Discovery",
       "tactic": "discovery",
-      "parent": null
+      "parent": null,
+      "description": "Adversaries may attempt to get detailed information about the operating system and hardware.",
+      "url": "https://attack.mitre.org/techniques/T1082"
     },
     {
       "id": "T1555",
       "name": "Credentials from Password Stores",
       "tactic": "credential-access",
-      "parent": null
+      "parent": null,
+      "description": "Adversaries may search for common password storage locations to obtain user credentials.",
+      "url": "https://attack.mitre.org/techniques/T1555"
     },
     {
       "id": "T1555.005",
       "name": "Password Managers",
       "tactic": "credential-access",
-      "parent": "T1555"
+      "parent": "T1555",
+      "description": "Adversaries may acquire credentials from third-party password managers.",
+      "url": "https://attack.mitre.org/techniques/T1555/005"
     },
     {
       "id": "T1059",
       "name": "Command and Scripting Interpreter",
       "tactic": "execution",
-      "parent": null
+      "parent": null,
+      "description": "Adversaries may abuse command and script interpreters to execute commands and scripts.",
+      "url": "https://attack.mitre.org/techniques/T1059"
     },
     {
       "id": "T1059.001",
       "name": "PowerShell",
       "tactic": "execution",
-      "parent": "T1059"
+      "parent": "T1059",
+      "description": "Adversaries may abuse PowerShell commands and scripts for execution.",
+      "url": "https://attack.mitre.org/techniques/T1059/001"
     },
     {
       "id": "T1053",
       "name": "Scheduled Task/Job",
       "tactic": "persistence",
-      "parent": null
+      "parent": null,
+      "description": "Adversaries may abuse task scheduling functionality to facilitate execution at specified intervals.",
+      "url": "https://attack.mitre.org/techniques/T1053"
     },
     {
       "id": "T1053.005",
       "name": "Scheduled Task",
       "tactic": "persistence",
-      "parent": "T1053"
+      "parent": "T1053",
+      "description": "Adversaries may abuse the Windows Task Scheduler to perform task scheduling for execution.",
+      "url": "https://attack.mitre.org/techniques/T1053/005"
     },
     {
       "id": "T1005",
       "name": "Data from Local System",
       "tactic": "exfiltration",
-      "parent": null
+      "parent": null,
+      "description": "Adversaries may search local system sources to find files of interest prior to exfiltration.",
+      "url": "https://attack.mitre.org/techniques/T1005"
     },
     {
       "id": "T1046",
       "name": "Network Service Discovery",
       "tactic": "discovery",
-      "parent": null
+      "parent": null,
+      "description": "Adversaries may attempt to get a listing of services running on remote hosts and local network.",
+      "url": "https://attack.mitre.org/techniques/T1046"
     }
   ]
 }

@@ -19,6 +19,9 @@ def test_lookup_known_technique(mapper):
     assert result["name"] == "System Information Discovery"
     assert result["tactic"] == "discovery"
     assert result["parent"] is None
+    assert "description" in result
+    assert "url" in result
+    assert result["url"].startswith("https://attack.mitre.org/")
 
 
 def test_lookup_subtechnique_with_parent(mapper):
@@ -50,11 +53,13 @@ def test_get_by_tactic_empty(mapper):
 def test_all_tactics_returns_expected_set(mapper):
     """all_tactics should return every unique tactic, sorted."""
     tactics = mapper.all_tactics()
-    expected = sorted([
-        "credential-access",
-        "discovery",
-        "execution",
-        "exfiltration",
-        "persistence",
-    ])
+    expected = sorted(
+        [
+            "credential-access",
+            "discovery",
+            "execution",
+            "exfiltration",
+            "persistence",
+        ]
+    )
     assert tactics == expected

@@ -22,6 +22,7 @@ VALID_TEMPLATE = FIXTURES / "test-template.yaml"
 # Loading a valid template
 # ------------------------------------------------------------------
 
+
 class TestLoadValidTemplate:
     """Verify that all fields are parsed correctly from a valid file."""
 
@@ -63,6 +64,7 @@ class TestLoadValidTemplate:
 # Parameter parsing
 # ------------------------------------------------------------------
 
+
 class TestParameterTypes:
     """Ensure every parameter type is parsed and carries correct metadata."""
 
@@ -103,8 +105,8 @@ class TestParameterTypes:
 # Safety metadata
 # ------------------------------------------------------------------
 
-class TestSafetyInfo:
 
+class TestSafetyInfo:
     @pytest.fixture()
     def tpl(self) -> Template:
         return load_template(VALID_TEMPLATE)
@@ -120,8 +122,8 @@ class TestSafetyInfo:
 # Error handling
 # ------------------------------------------------------------------
 
-class TestErrorHandling:
 
+class TestErrorHandling:
     def test_missing_file_raises_template_error(self) -> None:
         with pytest.raises(TemplateError, match="not found"):
             load_template("/nonexistent/path/template.yaml")
@@ -185,8 +187,8 @@ class TestErrorHandling:
 # Template discovery
 # ------------------------------------------------------------------
 
-class TestDiscoverTemplates:
 
+class TestDiscoverTemplates:
     def test_finds_templates_in_directory(self, tmp_path: Path) -> None:
         # Create a valid template in a subdirectory
         sub = tmp_path / "payloads" / "recon"

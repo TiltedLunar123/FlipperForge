@@ -10,7 +10,7 @@ Author: TiltedLunar123 <hilgendorfjude@gmail.com>
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 import jinja2
 
@@ -18,14 +18,15 @@ from flipperforge.engine.linter import Warning, lint
 from flipperforge.engine.parser import parse
 from flipperforge.templates.loader import Parameter, Template
 
-
 # -- Exceptions -------------------------------------------------------------
+
 
 class CompileError(Exception):
     """Raised when template compilation fails due to invalid parameters."""
 
 
 # -- Result dataclass -------------------------------------------------------
+
 
 @dataclass
 class CompileResult:
@@ -82,6 +83,10 @@ def _validate_params(
 
         merged[pdef.name] = value
 
+    if params:
+        unknown = ", ".join(sorted(params.keys()))
+        raise CompileError(f"Unknown parameter(s): {unknown}")
+
     return merged
 
 
@@ -89,9 +94,7 @@ def _validate_string(pdef: Parameter, value: Any) -> str:
     """Validate a string parameter value."""
     value = str(value) if value is not None else ""
     if "\x00" in value:
-        raise CompileError(
-            f"Parameter '{pdef.name}' contains null bytes"
-        )
+        raise CompileError(f"Parameter '{pdef.name}' contains null bytes")
     if len(value) > _MAX_STRING_LENGTH:
         raise CompileError(
             f"Parameter '{pdef.name}' exceeds max length of "
@@ -104,21 +107,13 @@ def _validate_integer(pdef: Parameter, value: Any) -> str:
     """Validate an integer parameter and return its string representation."""
     try:
         int_val = int(value)
-    except (TypeError, ValueError):
-        raise CompileError(
-            f"Parameter '{pdef.name}' must be an integer, got '{value}'"
-        )
+    except (TypeError, ValueError) as exc:
+        raise CompileError(f"Parameter '{pdef.name}' must be an integer, got '{value}'") from exc
 
     if pdef.min is not None and int_val < pdef.min:
-        raise CompileError(
-            f"Parameter '{pdef.name}' value {int_val} is below "
-            f"minimum {pdef.min}"
-        )
+        raise CompileError(f"Parameter '{pdef.name}' value {int_val} is below minimum {pdef.min}")
     if pdef.max is not None and int_val > pdef.max:
-        raise CompileError(
-            f"Parameter '{pdef.name}' value {int_val} is above "
-            f"maximum {pdef.max}"
-        )
+        raise CompileError(f"Parameter '{pdef.name}' value {int_val} is above maximum {pdef.max}")
 
     return str(int_val)
 
@@ -132,24 +127,20 @@ def _validate_boolean(pdef: Parameter, value: Any) -> str:
     # Accept integer-like truthy/falsy values
     try:
         return "true" if int(value) else "false"
-    except (TypeError, ValueError):
-        raise CompileError(
-            f"Parameter '{pdef.name}' must be a boolean, got '{value}'"
-        )
+    except (TypeError, ValueError) as exc:
+        raise CompileError(f"Parameter '{pdef.name}' must be a boolean, got '{value}'") from exc
 
 
 def _validate_choice(pdef: Parameter, value: Any) -> str:
     """Validate a choice parameter against the allowed list."""
     value = str(value)
     if pdef.choices and value not in pdef.choices:
-        raise CompileError(
-            f"Parameter '{pdef.name}' must be one of "
-            f"{pdef.choices}, got '{value}'"
-        )
+        raise CompileError(f"Parameter '{pdef.name}' must be one of {pdef.choices}, got '{value}'")
     return value
 
 
 # -- Public API --------------------------------------------------------------
+
 
 def compile_template(
     template: Template,
@@ -196,9 +187,7 @@ def compile_template(
 
     # Step 3 -- parse rendered script
     parse_result = parse(rendered)
-    errors = [
-        f"Line {e.line_number}: {e.message}" for e in parse_result.errors
-    ]
+    errors = [f"Line {e.line_number}: {e.message}" for e in parse_result.errors]
 
     # Step 4 -- lint rendered script
     requires_conf = template.safety.requires_confirmation

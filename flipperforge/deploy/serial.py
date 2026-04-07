@@ -40,19 +40,20 @@ class FlipperConnection:
                 and port_info.pid == FlipperConnection.FLIPPER_PID
             ):
                 return port_info.device
-        raise FlipperConnectionError(
-            "No Flipper Zero detected. Check USB connection."
-        )
+        raise FlipperConnectionError("No Flipper Zero detected. Check USB connection.")
 
-    def __init__(self, port: str) -> None:
+    def __init__(self, port: str | None = None) -> None:
         """Open a serial connection to the Flipper Zero.
 
         Args:
             port: The serial port to connect to (e.g. 'COM3').
+                  If None, auto-detects the Flipper Zero.
 
         Raises:
             FlipperConnectionError: If the connection cannot be opened.
         """
+        if port is None:
+            port = self.detect_port()
         try:
             self._serial = serial.Serial(
                 port=port,
@@ -60,15 +61,14 @@ class FlipperConnection:
                 timeout=self.TIMEOUT,
             )
         except serial.SerialException as exc:
-            raise FlipperConnectionError(
-                f"Failed to open port {port}: {exc}"
-            ) from exc
+            raise FlipperConnectionError(f"Failed to open port {port}: {exc}") from exc
 
-    def _send_command(self, command: str) -> str:
+    def _send_command(self, command: str, *, retries: int = 1) -> str:
         """Send a command to the Flipper and read the response.
 
         Args:
             command: The CLI command string to send.
+            retries: Number of retries on timeout (default 1).
 
         Returns:
             The response text from the Flipper.
@@ -76,53 +76,90 @@ class FlipperConnection:
         Raises:
             FlipperConnectionError: If a storage error is detected.
         """
-        self._serial.write(f"{command}\r\n".encode("utf-8"))
-        response = b""
-        while True:
-            chunk = self._serial.read(256)
-            if not chunk:
-                break
-            response += chunk
-            if self.PROMPT.encode("utf-8") in response:
-                break
+        for attempt in range(1 + retries):
+            self._serial.write(f"{command}\r\n".encode())
+            response = b""
+            while True:
+                chunk = self._serial.read(256)
+                if not chunk:
+                    break
+                response += chunk
+                if self.PROMPT.encode("utf-8") in response:
+                    break
+                if len(response) > 1024 * 1024:
+                    break
 
-        text = response.decode("utf-8", errors="replace")
-        if "Storage error:" in text:
-            raise FlipperConnectionError(f"Storage error: {text}")
-        return text
+            text = response.decode("utf-8", errors="replace")
+            if "Storage error:" in text:
+                raise FlipperConnectionError(f"Storage error: {text}")
 
-    def list_badusb_files(self) -> list[str]:
+            if text.strip() or attempt == retries:
+                return text
+
+        return ""
+
+    def list_badusb_files(self) -> list[dict[str, str]]:
         """List files in the BadUSB directory on the Flipper.
 
         Returns:
-            A list of filenames found in /ext/badusb.
+            A list of dicts with 'name' and 'size' keys.
         """
         output = self._send_command("storage list /ext/badusb")
-        files: list[str] = []
+        files: list[dict[str, str]] = []
         for line in output.splitlines():
             line = line.strip()
             if line.startswith("[F]"):
                 # Format: [F] filename.txt 1234
                 parts = line.split()
                 if len(parts) >= 2:
-                    files.append(parts[1])
+                    name = parts[1]
+                    size = parts[2] if len(parts) >= 3 else ""
+                    files.append({"name": name, "size": size})
         return files
 
     def deploy(self, filename: str, script: str) -> None:
         """Write a payload script to the Flipper BadUSB directory.
 
-        Uses the storage write_chunk command to transfer the payload.
+        Uses the storage write_chunk command to transfer the payload
+        and verifies the file was written with storage stat.
 
         Args:
             filename: The name of the file to create on the Flipper.
             script: The DuckyScript payload content.
+
+        Raises:
+            FlipperConnectionError: If the deploy fails or verification fails.
         """
         filepath = f"/ext/badusb/{filename}"
-        # Use storage write_chunk to send payload data
         self._send_command(f"storage write_chunk {filepath}")
         self._serial.write(script.encode("utf-8"))
         self._serial.write(b"\x00")  # null terminator to signal end
         self._serial.read(256)  # read acknowledgment
+
+        # Verify the file was written
+        stat_output = self._send_command(f"storage stat {filepath}")
+        if "Storage error:" in stat_output or "not found" in stat_output.lower():
+            raise FlipperConnectionError(
+                f"Deploy verification failed: {filepath} not found after write"
+            )
+
+    def _strip_protocol(self, output: str, command: str) -> str:
+        """Strip the command echo and prompt from serial output."""
+        lines = output.splitlines()
+        cleaned: list[str] = []
+        for line in lines:
+            stripped = line.strip()
+            if stripped == command.strip():
+                continue
+            if stripped == self.PROMPT.strip():
+                continue
+            if stripped.endswith(self.PROMPT.strip()):
+                line = line.replace(self.PROMPT.strip(), "").rstrip()
+                if line.strip():
+                    cleaned.append(line)
+                continue
+            cleaned.append(line)
+        return "\n".join(cleaned).strip()
 
     def read_file(self, filename: str) -> str:
         """Read a payload file from the Flipper.
@@ -131,11 +168,12 @@ class FlipperConnection:
             filename: The name of the file in /ext/badusb.
 
         Returns:
-            The file content as a string.
+            The file content as a string (protocol overhead stripped).
         """
         filepath = f"/ext/badusb/{filename}"
-        output = self._send_command(f"storage read {filepath}")
-        return output
+        command = f"storage read {filepath}"
+        output = self._send_command(command)
+        return self._strip_protocol(output, command)
 
     def delete_file(self, filename: str) -> None:
         """Delete a payload file from the Flipper.
@@ -148,7 +186,7 @@ class FlipperConnection:
 
     def close(self) -> None:
         """Close the serial connection."""
-        if self._serial and self._serial.is_open:
+        if hasattr(self, "_serial") and self._serial and self._serial.is_open:
             self._serial.close()
 
     def __enter__(self) -> "FlipperConnection":

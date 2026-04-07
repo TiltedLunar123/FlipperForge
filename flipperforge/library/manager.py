@@ -2,46 +2,63 @@
 
 import json
 import os
-from datetime import datetime, timezone
+import re
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
+
+_SAFE_NAME_RE = re.compile(r"^[a-zA-Z0-9_\-]+$")
 
 
 class PayloadLibrary:
     """Manages a local library of BadUSB payload scripts and metadata."""
 
-    def __init__(self, payloads_dir: Optional[str] = None) -> None:
+    def __init__(self, payloads_dir: str | None = None) -> None:
         if payloads_dir is None:
             self.payloads_dir = Path(os.getcwd()) / "payloads"
         else:
             self.payloads_dir = Path(payloads_dir)
         self.payloads_dir.mkdir(parents=True, exist_ok=True)
 
+    @staticmethod
+    def _sanitize_name(name: str) -> str:
+        """Validate and sanitize a payload name to prevent path traversal."""
+        if not name or not _SAFE_NAME_RE.match(name):
+            raise ValueError(
+                f"Invalid payload name: '{name}'. "
+                "Use only letters, digits, hyphens, and underscores."
+            )
+        return name
+
     def save(
         self,
         name: str,
         script: str,
-        meta: Optional[dict[str, Any]] = None,
+        meta: dict[str, Any] | None = None,
     ) -> None:
         """Save a payload script and its metadata to the library.
 
         Writes name.txt with the script content and name.meta.json with
         the metadata plus a created_at timestamp.
+
+        Raises:
+            ValueError: If the name contains invalid characters.
         """
+        name = self._sanitize_name(name)
         script_path = self.payloads_dir / f"{name}.txt"
         meta_path = self.payloads_dir / f"{name}.meta.json"
 
         script_path.write_text(script, encoding="utf-8")
 
         meta_data = dict(meta) if meta else {}
-        meta_data["created_at"] = datetime.now(timezone.utc).isoformat()
+        meta_data["created_at"] = datetime.now(UTC).isoformat()
 
         meta_path.write_text(
             json.dumps(meta_data, indent=2),
             encoding="utf-8",
         )
 
-    def load(self, name: str) -> Optional[dict[str, Any]]:
+    def load(self, name: str) -> dict[str, Any] | None:
         """Load a payload by name.
 
         Returns a dict with 'script' and 'meta' keys, or None if not found.
@@ -55,7 +72,10 @@ class PayloadLibrary:
         script = script_path.read_text(encoding="utf-8")
         meta: dict[str, Any] = {}
         if meta_path.exists():
-            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            try:
+                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                meta = {}
 
         return {"script": script, "meta": meta}
 
@@ -88,7 +108,10 @@ class PayloadLibrary:
             meta_path = self.payloads_dir / f"{name}.meta.json"
             meta: dict[str, Any] = {}
             if meta_path.exists():
-                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                try:
+                    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                except (json.JSONDecodeError, OSError):
+                    meta = {}
             results.append({"name": name, "meta": meta})
 
         return results
